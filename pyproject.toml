@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "f1-analysis"
+version = "0.1.0"
+description = "Formula 1 data analysis using FastF1"
+authors = ["Aymen RHIHIL <aymenrhihilpay@gmail.com>"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastf1 = "^3.0.0"
+matplotlib = "^3.7.0"
+numpy = "^1.24.0"
+pandas = "^2.0.0"
+seaborn = "^0.12.0"
+
+[tool.poetry.dev-dependencies]
+jupyter = "^1.0.0"
+ipykernel = "^6.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api" 
