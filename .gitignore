@@ -14,3 +14,14 @@ cache/
 # data files
 data/
 
+# Environment variables
+.env
+
+# Test files
+.pytest_cache/
+.coverage
+htmlcov/
+
+# PostgreSQL data files
+postgres_data/
+
