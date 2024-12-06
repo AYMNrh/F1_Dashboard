@@ -16,6 +16,9 @@ sqlalchemy = "^2.0.0"
 psycopg2-binary = "^2.9.0"
 python-dotenv = "^1.0.0"
 streamlit = "^1.40.2"
+black = "^24.10.0"
+isort = "^5.13.2"
+flake8 = "^7.1.1"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0.0"
