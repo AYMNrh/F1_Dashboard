@@ -1,8 +1,14 @@
-[tool.poetry]
+[project]
 name = "f1-analysis"
 version = "0.1.0"
 description = "Formula 1 data analysis using FastF1"
-authors = ["Aymen RHIHIL <aymenrhihilpay@gmail.com>"]
+requires-python = ">=3.11,<3.15"
+dynamic = ["dependencies"]
+authors = [
+    { name = "Aymen RHIHIL", email = "aymenrhihilpay@gmail.com" }
+]
+
+[tool.poetry]
 package-mode = false
 
 [tool.poetry.dependencies]
@@ -15,20 +21,20 @@ seaborn = "^0.13.2"
 streamlit = "^1.55.0"
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.10.0"
-isort = "^5.13.2"
-flake8 = "^7.1.1"
-jupyter = "^1.0.0"
-ipykernel = "^6.0.0"
-notebook = "^7.0.0"
+black = "^26.3.1"
+isort = "^8.0.1"
+flake8 = "^7.3.0"
+jupyter = "^1.1.1"
+ipykernel = "^7.2.0"
+notebook = "^7.5.5"
 
 [tool.poetry.group.legacy-db]
 optional = true
 
 [tool.poetry.group.legacy-db.dependencies]
-sqlalchemy = "^2.0.0"
+sqlalchemy = "^2.0.48"
 psycopg2-binary = "^2.9.11"
-python-dotenv = "^1.0.0"
+python-dotenv = "^1.2.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

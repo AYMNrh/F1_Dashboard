@@ -10,4 +10,4 @@ streamlit>=1.55.0,<2.0.0
 
 # Optional but recommended
 ipython>=8.17.2,<9.0.0  # For better development experience
-jupyter>=1.0.0,<2.0.0   # For notebook support
+jupyter>=1.1.1,<2.0.0   # For notebook support
