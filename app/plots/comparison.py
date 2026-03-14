@@ -299,6 +299,175 @@ def plot_lap_distribution(session):
     return fig
 
 
+def plot_tyre_strategy(session):
+    laps = session.laps[["Driver", "Stint", "Compound", "LapNumber"]].copy()
+    laps = laps.dropna(subset=["Driver", "Stint", "Compound", "LapNumber"])
+    laps["Stint"] = laps["Stint"].astype(int)
+
+    stint_data = (
+        laps.groupby(["Driver", "Stint", "Compound"])
+        .size()
+        .reset_index(name="StintLength")
+    )
+
+    if hasattr(session, "results") and session.results is not None and not session.results.empty:
+        driver_order = (
+            session.results["Abbreviation"].dropna().astype(str).tolist()
+        )
+    else:
+        driver_order = sorted(stint_data["Driver"].unique().tolist())
+
+    compound_colors = ff1_plotting.get_compound_mapping(session=session)
+
+    fig, ax = plt.subplots(figsize=(14, max(6, len(driver_order) * 0.45)))
+
+    for row_index, driver in enumerate(driver_order):
+        driver_stints = stint_data[stint_data["Driver"] == driver].sort_values("Stint")
+        stint_start = 0
+
+        for _, stint in driver_stints.iterrows():
+            compound = str(stint["Compound"])
+            ax.barh(
+                y=row_index,
+                width=stint["StintLength"],
+                left=stint_start,
+                color=compound_colors.get(compound, "#888888"),
+                edgecolor="black",
+                height=0.8,
+            )
+            stint_start += stint["StintLength"]
+
+    ax.set_yticks(range(len(driver_order)))
+    ax.set_yticklabels(driver_order)
+    ax.invert_yaxis()
+    ax.set_xlabel("Laps")
+    ax.set_ylabel("Driver")
+    ax.set_title("Tyre Strategy")
+    ax.grid(axis="x", alpha=0.2)
+
+    legend_compounds = [
+        compound for compound in ["SOFT", "MEDIUM", "HARD", "INTERMEDIATE", "WET"]
+        if compound in compound_colors
+    ]
+    if legend_compounds:
+        handles = [
+            plt.Rectangle((0, 0), 1, 1, color=compound_colors[compound])
+            for compound in legend_compounds
+        ]
+        ax.legend(handles, legend_compounds, title="Compound", loc="upper right")
+
+    fig.suptitle(f"{session.event.year} {session.event['EventName']} Tyre Strategy")
+    plt.tight_layout()
+    return fig
+
+
+def plot_team_pace(session):
+    laps = session.laps.pick_quicklaps().copy()
+    laps = laps.dropna(subset=["Team", "LapTime"])
+
+    if laps.empty:
+        raise ValueError("No quick laps available for team pace analysis.")
+
+    laps["LapTimeSeconds"] = laps["LapTime"].dt.total_seconds()
+
+    team_order = (
+        laps.groupby("Team")["LapTimeSeconds"]
+        .median()
+        .sort_values()
+        .index
+        .tolist()
+    )
+
+    fig, ax = plt.subplots(figsize=(14, max(6, len(team_order) * 0.45)))
+    palette = {team: ff1_plotting.get_team_color(team, session=session) for team in team_order}
+
+    sns.boxplot(
+        data=laps,
+        x="LapTimeSeconds",
+        y="Team",
+        order=team_order,
+        palette=palette,
+        linewidth=1,
+        fliersize=0,
+        ax=ax,
+    )
+
+    sns.stripplot(
+        data=laps,
+        x="LapTimeSeconds",
+        y="Team",
+        order=team_order,
+        color="white",
+        alpha=0.35,
+        size=2.5,
+        ax=ax,
+    )
+
+    ax.set_xlabel("Lap Time (s)")
+    ax.set_ylabel("Team")
+    ax.set_title("Team Pace Comparison")
+    ax.grid(axis="x", alpha=0.2)
+    fig.suptitle(f"{session.event.year} {session.event['EventName']} Team Pace")
+    plt.tight_layout()
+    return fig
+
+
+def plot_qualifying_overview(session):
+    if not hasattr(session, "results") or session.results is None or session.results.empty:
+        raise ValueError("No qualifying results are available for this session.")
+
+    results = session.results.copy()
+    results = results.dropna(subset=["Abbreviation"])
+
+    columns = ["Abbreviation", "Position", "Q1", "Q2", "Q3"]
+    for column in columns:
+        if column not in results.columns:
+            raise ValueError("This qualifying session does not include complete Q1/Q2/Q3 data.")
+
+    quali = results[columns].copy()
+    quali["Position"] = pd.to_numeric(quali["Position"], errors="coerce")
+    quali = quali.dropna(subset=["Position"]).sort_values("Position")
+
+    q_columns = ["Q1", "Q2", "Q3"]
+    for column in q_columns:
+        quali[column] = pd.to_timedelta(quali[column], errors="coerce").dt.total_seconds()
+
+    plot_data = quali.melt(
+        id_vars=["Abbreviation", "Position"],
+        value_vars=q_columns,
+        var_name="SessionPart",
+        value_name="LapTimeSeconds",
+    ).dropna(subset=["LapTimeSeconds"])
+
+    if plot_data.empty:
+        raise ValueError("No qualifying lap times are available to plot.")
+
+    driver_order = quali["Abbreviation"].tolist()
+    fig, ax = plt.subplots(figsize=(14, max(6, len(driver_order) * 0.45)))
+
+    sns.pointplot(
+        data=plot_data,
+        x="LapTimeSeconds",
+        y="Abbreviation",
+        hue="SessionPart",
+        order=driver_order,
+        dodge=0.5,
+        join=False,
+        markers=["o", "s", "D"],
+        errorbar=None,
+        ax=ax,
+    )
+
+    ax.set_xlabel("Lap Time (s)")
+    ax.set_ylabel("Driver")
+    ax.set_title("Qualifying Overview")
+    ax.grid(axis="x", alpha=0.2)
+    ax.legend(title="Session")
+    fig.suptitle(f"{session.event.year} {session.event['EventName']} Qualifying Overview")
+    plt.tight_layout()
+    return fig
+
+
 def plot_position_changes(session):
     fig, ax = plt.subplots(figsize=(15, 8))
     for drv in session.drivers:

@@ -11,8 +11,11 @@ from app.plots.comparison import (
     plot_lap_distribution,
     plot_laptime,
     plot_position_changes,
+    plot_qualifying_overview,
     plot_sectors,
     plot_speed_map,
+    plot_team_pace,
+    plot_tyre_strategy,
 )
 from app.services.sessions import (
     get_available_events,
@@ -34,9 +37,12 @@ PLOT_HANDLERS = {
     "Fastest Lap": plot_fastest_lap,
     "Fastest Sectors": plot_fastest_sectors,
     "Full Telemetry": plot_full_telemetry,
+    "Qualifying Overview": plot_qualifying_overview,
     "Speed Map": plot_speed_map,
     "Lap Time Distribution": plot_lap_distribution,
     "Position Changes": plot_position_changes,
+    "Team Pace Comparison": plot_team_pace,
+    "Tyre Strategy": plot_tyre_strategy,
 }
 
 
@@ -59,6 +65,15 @@ def render_plot(session, selection: AnalysisSelection):
 
     if selection.analysis_type == "Position Changes":
         return plot_position_changes(session)
+
+    if selection.analysis_type == "Qualifying Overview":
+        return plot_qualifying_overview(session)
+
+    if selection.analysis_type == "Team Pace Comparison":
+        return plot_team_pace(session)
+
+    if selection.analysis_type == "Tyre Strategy":
+        return plot_tyre_strategy(session)
 
     handler = PLOT_HANDLERS[selection.analysis_type]
     return handler(session, selection.driver1_code, selection.driver2_code)

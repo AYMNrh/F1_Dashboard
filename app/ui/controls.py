@@ -39,8 +39,15 @@ def get_analysis_options(session_type: str) -> list[str]:
         "Full Telemetry",
         "Speed Map",
     ]
+    if session_type == "Q":
+        return base_options + ["Qualifying Overview"]
     if session_type in {"Sprint", "R"}:
-        return base_options + ["Lap Time Distribution", "Position Changes"]
+        return base_options + [
+            "Lap Time Distribution",
+            "Position Changes",
+            "Team Pace Comparison",
+            "Tyre Strategy",
+        ]
     return base_options
 
 
