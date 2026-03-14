@@ -11,26 +11,18 @@ from fastf1 import plotting as ff1_plotting, utils
 from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 
-from app.services.sessions import get_team_color
+from app.services.sessions import get_driver_color, get_driver_style, get_team_color
 
 
 def plot_laptime(session, driver1, driver2):
     laps_d1 = session.laps.pick_driver(driver1)
     laps_d2 = session.laps.pick_driver(driver2)
+    style1 = get_driver_style(session, driver1, ["color", "linestyle"])
+    style2 = get_driver_style(session, driver2, ["color", "linestyle"])
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(
-        laps_d1["LapNumber"],
-        laps_d1["LapTime"],
-        color=get_team_color(session, driver1),
-        label=driver1,
-    )
-    ax.plot(
-        laps_d2["LapNumber"],
-        laps_d2["LapTime"],
-        color=get_team_color(session, driver2),
-        label=driver2,
-    )
+    ax.plot(laps_d1["LapNumber"], laps_d1["LapTime"], label=driver1, linewidth=2, **style1)
+    ax.plot(laps_d2["LapNumber"], laps_d2["LapTime"], label=driver2, linewidth=2, **style2)
     ax.set_xlabel("Lap Number")
     ax.set_ylabel("Lap Time")
     ax.legend()
@@ -43,20 +35,12 @@ def plot_fastest_lap(session, driver1, driver2):
     fastest_d2 = session.laps.pick_driver(driver2).pick_fastest()
     tel_d1 = fastest_d1.get_car_data().add_distance()
     tel_d2 = fastest_d2.get_car_data().add_distance()
+    style1 = get_driver_style(session, driver1, ["color", "linestyle"])
+    style2 = get_driver_style(session, driver2, ["color", "linestyle"])
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(
-        tel_d1["Distance"],
-        tel_d1["Speed"],
-        color=get_team_color(session, driver1),
-        label=driver1,
-    )
-    ax.plot(
-        tel_d2["Distance"],
-        tel_d2["Speed"],
-        color=get_team_color(session, driver2),
-        label=driver2,
-    )
+    ax.plot(tel_d1["Distance"], tel_d1["Speed"], label=driver1, linewidth=2, **style1)
+    ax.plot(tel_d2["Distance"], tel_d2["Speed"], label=driver2, linewidth=2, **style2)
     ax.set_xlabel("Distance (m)")
     ax.set_ylabel("Speed (km/h)")
     ax.legend()
@@ -152,11 +136,11 @@ def plot_full_telemetry(session, driver1, driver2):
     tel_d2 = fastest_d2.get_car_data().add_distance()
     delta_time, ref_tel, _ = utils.delta_time(fastest_d1, fastest_d2)
 
-    color1 = get_team_color(session, driver1)
-    color2 = get_team_color(session, driver2)
+    style1 = get_driver_style(session, driver1, ["color", "linestyle"])
+    style2 = get_driver_style(session, driver2, ["color", "linestyle"])
 
     fig, axes = plt.subplots(6, 1, figsize=(12, 16), sharex=True)
-    axes[0].plot(ref_tel["Distance"], delta_time, color=color1)
+    axes[0].plot(ref_tel["Distance"], delta_time, linewidth=2, **style1)
     axes[0].axhline(y=0, color="white", linestyle="-", alpha=0.5)
     axes[0].set_ylabel("Delta (s)")
 
@@ -168,12 +152,12 @@ def plot_full_telemetry(session, driver1, driver2):
         ("nGear", "Gear"),
     ]
     for axis, (column, label) in zip(axes[1:], plot_pairs):
-        axis.plot(tel_d1["Distance"], tel_d1[column], color=color1, label=driver1)
-        axis.plot(tel_d2["Distance"], tel_d2[column], color=color2, label=driver2)
+        axis.plot(tel_d1["Distance"], tel_d1[column], linewidth=2, label=driver1, **style1)
+        axis.plot(tel_d2["Distance"], tel_d2[column], linewidth=2, label=driver2, **style2)
         axis.set_ylabel(label)
 
     axes[-1].set_xlabel("Distance (m)")
-    axes[0].legend([driver1, driver2])
+    axes[1].legend()
     fig.suptitle(
         f"Full Telemetry Comparison\n{session.event.year} {session.event['EventName']}"
     )
@@ -183,8 +167,8 @@ def plot_full_telemetry(session, driver1, driver2):
 def plot_sectors(session, driver1, driver2):
     laps_d1 = session.laps.pick_driver(driver1)
     laps_d2 = session.laps.pick_driver(driver2)
-    color1 = get_team_color(session, driver1)
-    color2 = get_team_color(session, driver2)
+    color1 = get_driver_color(session, driver1)
+    color2 = get_driver_color(session, driver2)
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     sectors = ["Sector1Time", "Sector2Time", "Sector3Time"]
@@ -322,7 +306,7 @@ def plot_corner_annotated_speed_trace(session, driver):
     ax.plot(
         telemetry["Distance"],
         telemetry["Speed"],
-        color=ff1_plotting.get_driver_color(driver, session=session),
+        color=get_driver_color(session, driver),
         linewidth=2.5,
         label=driver,
     )
@@ -635,9 +619,7 @@ def plot_position_changes(session):
             continue
 
         abb = drv_laps["Driver"].iloc[0]
-        style = ff1_plotting.get_driver_style(
-            identifier=abb, style=["color", "linestyle"], session=session
-        )
+        style = get_driver_style(session, abb, ["color", "linestyle"])
         ax.plot(drv_laps["LapNumber"], drv_laps["Position"], label=abb, linewidth=2, **style)
 
     ax.set_ylim([20.5, 0.5])

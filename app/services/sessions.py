@@ -59,3 +59,16 @@ def get_team_color(session, driver_code: str) -> str:
         driver_info = driver_info.iloc[0]
 
     return ff1_plotting.get_team_color(driver_info["TeamName"], session=session)
+
+
+def get_driver_color(session, driver_code: str) -> str:
+    return ff1_plotting.get_driver_color(driver_code, session=session)
+
+
+def get_driver_style(session, driver_code: str, style=None) -> dict:
+    style_keys = style or ["color", "linestyle"]
+    return ff1_plotting.get_driver_style(
+        identifier=driver_code,
+        style=style_keys,
+        session=session,
+    )
