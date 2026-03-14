@@ -6,24 +6,29 @@ authors = ["Aymen RHIHIL <aymenrhihilpay@gmail.com>"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.10"
-fastf1 = "^3.0.0"
-matplotlib = "^3.7.0"
-numpy = "^1.24.0"
-pandas = "^2.0.0"
-seaborn = "^0.12.0"
-sqlalchemy = "^2.0.0"
-psycopg2-binary = "^2.9.0"
-python-dotenv = "^1.0.0"
-streamlit = "^1.40.2"
+python = ">=3.11,<3.15"
+fastf1 = "^3.8.1"
+matplotlib = "^3.10.8"
+numpy = "^2.4.3"
+pandas = "^2.3.3"
+seaborn = "^0.13.2"
+streamlit = "^1.55.0"
+
+[tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
 isort = "^5.13.2"
 flake8 = "^7.1.1"
-
-[tool.poetry.dev-dependencies]
 jupyter = "^1.0.0"
 ipykernel = "^6.0.0"
 notebook = "^7.0.0"
+
+[tool.poetry.group.legacy-db]
+optional = true
+
+[tool.poetry.group.legacy-db.dependencies]
+sqlalchemy = "^2.0.0"
+psycopg2-binary = "^2.9.11"
+python-dotenv = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
