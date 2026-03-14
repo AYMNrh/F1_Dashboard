@@ -37,7 +37,10 @@ def get_analysis_options(session_type: str) -> list[str]:
         "Fastest Lap",
         "Fastest Sectors",
         "Full Telemetry",
+        "Corner-Annotated Speed Trace",
+        "Gear Shifts On Track",
         "Speed Map",
+        "Weather and Track Evolution",
     ]
     if session_type == "Q":
         return base_options + ["Qualifying Overview"]
@@ -86,9 +89,13 @@ def render_analysis_controls(
                 label_visibility="collapsed",
             )
 
-    if analysis_type == "Speed Map":
+    if analysis_type in {
+        "Speed Map",
+        "Gear Shifts On Track",
+        "Corner-Annotated Speed Trace",
+    }:
         selected_driver = st.radio(
-            "Driver for Speed Map", [driver1_name, driver2_name], horizontal=True
+            "Driver Selection", [driver1_name, driver2_name], horizontal=True
         )
         driver_for_map = drivers_info[selected_driver]
 

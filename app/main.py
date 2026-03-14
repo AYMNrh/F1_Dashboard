@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import streamlit as st
 
 from app.models.state import AnalysisSelection, SessionSelection
 from app.plots.comparison import (
+    export_data_for_analysis,
+    figure_to_png_bytes,
+    plot_corner_annotated_speed_trace,
     plot_fastest_lap,
     plot_fastest_sectors,
     plot_full_telemetry,
+    plot_gear_shifts_on_track,
     plot_lap_distribution,
     plot_laptime,
     plot_position_changes,
+    plot_weather_track_evolution,
     plot_qualifying_overview,
     plot_sectors,
     plot_speed_map,
@@ -28,6 +34,7 @@ from app.ui.controls import (
     render_driver_controls,
     render_session_controls,
 )
+from app.ui.summary import render_session_summary
 from app.utils.validation import validate_analysis_selection
 
 
@@ -37,12 +44,15 @@ PLOT_HANDLERS = {
     "Fastest Lap": plot_fastest_lap,
     "Fastest Sectors": plot_fastest_sectors,
     "Full Telemetry": plot_full_telemetry,
+    "Gear Shifts On Track": plot_gear_shifts_on_track,
+    "Corner-Annotated Speed Trace": plot_corner_annotated_speed_trace,
     "Qualifying Overview": plot_qualifying_overview,
     "Speed Map": plot_speed_map,
     "Lap Time Distribution": plot_lap_distribution,
     "Position Changes": plot_position_changes,
     "Team Pace Comparison": plot_team_pace,
     "Tyre Strategy": plot_tyre_strategy,
+    "Weather and Track Evolution": plot_weather_track_evolution,
 }
 
 
@@ -60,6 +70,12 @@ def render_plot(session, selection: AnalysisSelection):
     if selection.analysis_type == "Speed Map":
         return plot_speed_map(session, selection.driver_for_map)
 
+    if selection.analysis_type == "Gear Shifts On Track":
+        return plot_gear_shifts_on_track(session, selection.driver_for_map)
+
+    if selection.analysis_type == "Corner-Annotated Speed Trace":
+        return plot_corner_annotated_speed_trace(session, selection.driver_for_map)
+
     if selection.analysis_type == "Lap Time Distribution":
         return plot_lap_distribution(session)
 
@@ -75,8 +91,45 @@ def render_plot(session, selection: AnalysisSelection):
     if selection.analysis_type == "Tyre Strategy":
         return plot_tyre_strategy(session)
 
+    if selection.analysis_type == "Weather and Track Evolution":
+        return plot_weather_track_evolution(session)
+
     handler = PLOT_HANDLERS[selection.analysis_type]
     return handler(session, selection.driver1_code, selection.driver2_code)
+
+
+def dataframe_to_csv_bytes(df: pd.DataFrame) -> bytes:
+    export_df = df.copy()
+    for column in export_df.columns:
+        if pd.api.types.is_timedelta64_dtype(export_df[column]):
+            export_df[column] = export_df[column].astype(str)
+    return export_df.to_csv(index=False).encode("utf-8")
+
+
+def render_export_actions(session, selection: AnalysisSelection, fig):
+    export_col1, export_col2 = st.columns(2)
+    png_bytes = figure_to_png_bytes(fig)
+    with export_col1:
+        st.download_button(
+            "Download PNG",
+            data=png_bytes,
+            file_name=f"{selection.analysis_type.lower().replace(' ', '_')}.png",
+            mime="image/png",
+            use_container_width=True,
+        )
+
+    export_df = export_data_for_analysis(session, selection)
+    with export_col2:
+        if export_df is not None and not export_df.empty:
+            st.download_button(
+                "Download CSV",
+                data=dataframe_to_csv_bytes(export_df),
+                file_name=f"{selection.analysis_type.lower().replace(' ', '_')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+        else:
+            st.button("Download CSV", disabled=True, use_container_width=True)
 
 
 def main():
@@ -104,6 +157,8 @@ def main():
         except Exception as exc:
             st.error(f"Error loading data: {exc}")
             return
+
+        render_session_summary(session, session_selection.session_type)
 
         drivers_info = get_drivers_in_session(session)
         if len(drivers_info) < 2:
@@ -135,6 +190,7 @@ def main():
                 try:
                     fig = render_plot(session, analysis_selection)
                     st.pyplot(fig, use_container_width=True)
+                    render_export_actions(session, analysis_selection, fig)
                     plt.close(fig)
                 except Exception as exc:
                     st.error(f"Error generating plot: {exc}")

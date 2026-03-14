@@ -26,8 +26,12 @@ def validate_analysis_selection(selection: AnalysisSelection) -> str | None:
     ):
         return "This analysis is only available for Qualifying sessions."
 
-    if selection.analysis_type == "Speed Map" and not selection.driver_for_map:
-        return "Please select a driver for the speed map."
+    if (
+        selection.analysis_type
+        in {"Speed Map", "Gear Shifts On Track", "Corner-Annotated Speed Trace"}
+        and not selection.driver_for_map
+    ):
+        return "Please select a driver for this single-driver track analysis."
 
     if selection.analysis_type == "Fastest Sectors" and not selection.use_fastest_laps:
         if selection.driver1_lap is None or selection.driver2_lap is None:

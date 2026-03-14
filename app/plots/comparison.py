@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from io import BytesIO
+
 import fastf1 as ff1
 import matplotlib
 import numpy as np
@@ -254,6 +256,159 @@ def plot_speed_map(session, driver):
     return fig
 
 
+def plot_gear_shifts_on_track(session, driver):
+    lap = session.laps.pick_driver(driver).pick_fastest()
+    if lap is None:
+        raise ValueError("No fastest lap is available for this driver in the selected session.")
+
+    telemetry = lap.get_telemetry().copy()
+    telemetry = telemetry.dropna(subset=["X", "Y", "nGear"])
+    if telemetry.empty:
+        raise ValueError("No telemetry is available for gear shift analysis.")
+
+    x = telemetry["X"].to_numpy()
+    y = telemetry["Y"].to_numpy()
+    gear = telemetry["nGear"].astype(int).to_numpy()
+
+    points = np.array([x, y]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+    fig, ax = plt.subplots(figsize=(12, 6.75))
+    fig.suptitle(
+        f'{session.event["EventName"]} {session.event.year}\n{driver} - Gear Shifts',
+        size=22,
+        y=0.97,
+    )
+
+    ax.axis("off")
+    ax.plot(x, y, color="black", linestyle="-", linewidth=12, zorder=0)
+
+    cmap = plt.cm.get_cmap("Paired", 8)
+    line_collection = LineCollection(
+        segments,
+        cmap=cmap,
+        norm=plt.Normalize(1, 8),
+        linewidth=5,
+    )
+    line_collection.set_array(gear[:-1])
+    ax.add_collection(line_collection)
+    ax.axis("equal")
+
+    cbaxes = fig.add_axes([0.25, 0.05, 0.5, 0.05])
+    colorbar = matplotlib.colorbar.ColorbarBase(
+        cbaxes,
+        cmap=cmap,
+        norm=matplotlib.colors.Normalize(vmin=1, vmax=8),
+        orientation="horizontal",
+    )
+    colorbar.set_ticks(range(1, 9))
+    colorbar.set_label("Gear", size=12)
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_corner_annotated_speed_trace(session, driver):
+    lap = session.laps.pick_driver(driver).pick_fastest()
+    if lap is None:
+        raise ValueError("No fastest lap is available for this driver in the selected session.")
+
+    telemetry = lap.get_car_data().add_distance().copy()
+    telemetry = telemetry.dropna(subset=["Distance", "Speed"])
+    if telemetry.empty:
+        raise ValueError("No telemetry is available for speed trace analysis.")
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    ax.plot(
+        telemetry["Distance"],
+        telemetry["Speed"],
+        color=ff1_plotting.get_driver_color(driver, session=session),
+        linewidth=2.5,
+        label=driver,
+    )
+
+    try:
+        circuit_info = session.get_circuit_info()
+        corners = circuit_info.corners.copy()
+    except Exception:
+        corners = pd.DataFrame()
+
+    if not corners.empty and {"Distance", "Number", "Letter"}.issubset(corners.columns):
+        corners = corners.dropna(subset=["Distance"])
+        max_speed = telemetry["Speed"].max()
+
+        for _, corner in corners.iterrows():
+            distance = float(corner["Distance"])
+            label = f"{int(corner['Number'])}{corner['Letter'] or ''}".strip()
+            ax.axvline(distance, color="white", linestyle="--", linewidth=0.7, alpha=0.25)
+            ax.text(
+                distance,
+                max_speed + 2,
+                label,
+                fontsize=8,
+                ha="center",
+                va="bottom",
+                rotation=90,
+            )
+
+    ax.set_xlabel("Distance (m)")
+    ax.set_ylabel("Speed (km/h)")
+    ax.set_title("Corner-Annotated Speed Trace")
+    ax.grid(axis="x", alpha=0.2)
+    ax.legend()
+    fig.suptitle(
+        f'{session.event["EventName"]} {session.event.year}\n{driver} - Corner Speed Trace'
+    )
+    plt.tight_layout()
+    return fig
+
+
+def plot_weather_track_evolution(session):
+    weather = getattr(session, "weather_data", None)
+    if weather is None or weather.empty:
+        raise ValueError("No weather data is available for this session.")
+
+    weather = weather.copy()
+    if "Time" not in weather.columns:
+        raise ValueError("Weather data does not include time information.")
+
+    weather_seconds = weather["Time"].dt.total_seconds()
+    metrics = [
+        ("TrackTemp", "Track Temp (C)"),
+        ("AirTemp", "Air Temp (C)"),
+        ("Humidity", "Humidity (%)"),
+        ("WindSpeed", "Wind Speed"),
+    ]
+    available_metrics = [(col, label) for col, label in metrics if col in weather.columns]
+
+    if not available_metrics:
+        raise ValueError("No supported weather metrics are available for this session.")
+
+    fig, axes = plt.subplots(len(available_metrics), 1, figsize=(14, 3.2 * len(available_metrics)), sharex=True)
+    if len(available_metrics) == 1:
+        axes = [axes]
+
+    for ax, (column, label) in zip(axes, available_metrics):
+        ax.plot(weather_seconds, weather[column], linewidth=2)
+        ax.set_ylabel(label)
+        ax.grid(axis="x", alpha=0.2)
+
+    if "Rainfall" in weather.columns:
+        rainfall = weather["Rainfall"].fillna(False).astype(bool)
+        rain_times = weather_seconds[rainfall]
+        if not rain_times.empty:
+            for ax in axes:
+                for timestamp in rain_times:
+                    ax.axvline(timestamp, color="#4da6ff", linewidth=0.8, alpha=0.15)
+
+    axes[-1].set_xlabel("Session Time (s)")
+    fig.suptitle(
+        f"{session.event.year} {session.event['EventName']} Weather and Track Evolution"
+    )
+    plt.tight_layout()
+    return fig
+
+
 def plot_lap_distribution(session):
     point_finishers = session.drivers[:10]
     driver_laps = session.laps.pick_drivers(point_finishers).pick_quicklaps().reset_index()
@@ -493,3 +648,50 @@ def plot_position_changes(session):
     fig.suptitle(f"{session.event.year} {session.event['EventName']} Position Changes")
     plt.tight_layout()
     return fig
+
+
+def figure_to_png_bytes(fig):
+    buffer = BytesIO()
+    fig.savefig(buffer, format="png", bbox_inches="tight", dpi=200)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def export_data_for_analysis(session, selection):
+    analysis_type = selection.analysis_type
+
+    if analysis_type == "Tyre Strategy":
+        laps = session.laps[["Driver", "Stint", "Compound", "LapNumber"]].copy()
+        laps = laps.dropna(subset=["Driver", "Stint", "Compound", "LapNumber"])
+        return (
+            laps.groupby(["Driver", "Stint", "Compound"])
+            .size()
+            .reset_index(name="StintLength")
+        )
+
+    if analysis_type == "Team Pace Comparison":
+        laps = session.laps.pick_quicklaps().copy()
+        laps = laps.dropna(subset=["Team", "LapTime"])
+        laps["LapTimeSeconds"] = laps["LapTime"].dt.total_seconds()
+        return laps[["Driver", "Team", "LapNumber", "LapTimeSeconds", "Compound"]]
+
+    if analysis_type == "Qualifying Overview":
+        results = session.results.copy()
+        return results[[col for col in ["Abbreviation", "Position", "Q1", "Q2", "Q3"] if col in results.columns]]
+
+    if analysis_type == "Weather and Track Evolution":
+        return getattr(session, "weather_data", pd.DataFrame()).copy()
+
+    if analysis_type in {"Speed Map", "Gear Shifts On Track", "Corner-Annotated Speed Trace"}:
+        lap = session.laps.pick_driver(selection.driver_for_map).pick_fastest()
+        if lap is None:
+            return None
+        telemetry = lap.get_telemetry().copy()
+        return telemetry
+
+    if analysis_type == "Lap Times":
+        laps_1 = session.laps.pick_driver(selection.driver1_code).copy()
+        laps_2 = session.laps.pick_driver(selection.driver2_code).copy()
+        return pd.concat([laps_1, laps_2], ignore_index=True)
+
+    return None
