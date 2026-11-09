@@ -26,3 +26,10 @@ htmlcov/
 # PostgreSQL data files
 postgres_data/
 
+# React dashboard build and dependencies
+dashboard/frontend/node_modules/
+dashboard/frontend/dist/
+
+# Separate nested repository
+/openclaw/
+
